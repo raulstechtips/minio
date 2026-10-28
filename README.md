@@ -1,0 +1,2 @@
+# minio
+Standalone Minio Repo

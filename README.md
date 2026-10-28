@@ -26,7 +26,7 @@ In `templates/tenant.yaml`. Each edit uses the upstream value first, and calcula
 | `spec.configuration.name` | `tenant.configSecret.name`, else `<tenant.name>-minio-env-configuration` |
 | `spec.externalCertSecret` | `tenant.certificate.externalCertSecret`, else the chart certificate (`<tenant.name>-minio-tls`) and then each name in `tls.externalCertSecrets` |
 | `spec.features.domains` | `tenant.features.domains`, else `console: https://<ingressRoute.console.host>` and `minio: [https://<first ingressRoute.api.hosts host>]` |
-| `spec.pools[].affinity` | The pool `affinity`, else a required pod anti-affinity on `kubernetes.io/hostname` for the pods with `app.kubernetes.io/instance: <tenant.name>` |
+| `spec.pools[].affinity` | The pool `affinity`, else a required pod anti-affinity on `kubernetes.io/hostname` for the pods with `v1.min.io/tenant: <tenant.name>` (the label that the operator puts on every Tenant pod) |
 | `spec.pools[].resources`, `securityContext`, `containerSecurityContext` | The pool value, else `poolDefaults` |
 
 In `values.yaml`, these defaults are different from upstream:

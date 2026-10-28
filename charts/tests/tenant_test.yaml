@@ -54,7 +54,7 @@ tests:
               requiredDuringSchedulingIgnoredDuringExecution:
                 - labelSelector:
                     matchExpressions:
-                      - key: app.kubernetes.io/instance
+                      - key: v1.min.io/tenant
                         operator: In
                         values: [s3-test]
                   topologyKey: kubernetes.io/hostname

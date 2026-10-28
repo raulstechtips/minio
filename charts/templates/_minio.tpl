@@ -68,13 +68,17 @@ Only the first api host is a Tenant domain: MinIO uses it as MINIO_SERVER_URL (s
 {{- end -}}
 {{- end -}}
 
-{{/* Default pool anti-affinity: required, one pod per node, for this tenant's pods. */}}
+{{/*
+Default pool anti-affinity: required, one pod per node, for this tenant's pods. It selects
+v1.min.io/tenant, the label that the operator puts on every Tenant pod (the StatefulSet template
+has no app.kubernetes.io/instance label).
+*/}}
 {{- define "minio.poolAffinity" -}}
 podAntiAffinity:
   requiredDuringSchedulingIgnoredDuringExecution:
     - labelSelector:
         matchExpressions:
-          - key: app.kubernetes.io/instance
+          - key: v1.min.io/tenant
             operator: In
             values:
               - {{ include "minio.tenantName" . }}

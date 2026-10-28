@@ -588,7 +588,7 @@ ingressRoute:
 
 # Defaults for every entry in tenant.pools. A field that the pool entry sets itself wins.
 # The pool anti-affinity is calculated: required, one pod per node (kubernetes.io/hostname),
-# selected by app.kubernetes.io/instance=<tenant.name>.
+# selected by v1.min.io/tenant=<tenant.name> (the label that the operator puts on every Tenant pod).
 poolDefaults:
   resources:
     requests:

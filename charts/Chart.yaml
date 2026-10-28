@@ -1,0 +1,6 @@
+apiVersion: v2
+name: minio
+description: "One MinIO Tenant (for the MinIO Operator), from the upstream tenant chart 7.1.1 templates with calculated names, plus an Infisical-backed config Secret, a cert-manager certificate and one Traefik IngressRoute per host."
+type: application
+version: 1.0.0
+appVersion: "RELEASE.2025-04-08T15-41-24Z"

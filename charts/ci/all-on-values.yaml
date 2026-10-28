@@ -1,0 +1,58 @@
+# Every chart feature on, with dummy non-secret strings. Used by helm lint, kubeconform and the unit tests.
+tenant:
+  name: s3-test
+  pools:
+    - name: pool-0
+      servers: 4
+      volumesPerServer: 2
+      size: 20Gi
+      storageClassName: fake-storage-class
+    - name: pool-1
+      servers: 4
+      volumesPerServer: 1
+      size: 5Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: fake-node-label
+                    operator: Exists
+infisical:
+  authRef:
+    name: fake-auth
+    namespace: fake-auth-namespace
+  projectSlug: fake-project
+  environmentSlug: fake-env
+  secretPath: /fake/minio
+  recursive: false
+  refreshInterval: 5m
+oidc:
+  enabled: true
+  configUrl: https://idp.example.test/realms/fake/.well-known/openid-configuration
+tls:
+  externalCertSecrets:
+    - fake-public-tls
+ingressRoute:
+  enabled: true
+  middlewares:
+    - name: fake-headers
+      namespace: fake-middleware-namespace
+  tlsSecretName: fake-tls
+  console:
+    host: console.example.test
+  api:
+    hosts:
+      - name: one
+        host: api-one.example.test
+      - name: two
+        host: api-two.example.test
+        entryPoints:
+          - fake-entrypoint
+        ingressClass: fake-class
+        middlewares: []
+        tlsSecretName: fake-two-tls

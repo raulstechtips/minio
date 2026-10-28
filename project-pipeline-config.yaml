@@ -1,0 +1,11 @@
+project-config:
+  project-name: minio
+  project-description: "Helm chart that installs Minio in the cluster"
+  project-namespace: minio
+  publish-targets: [ghcr]
+  pipeline-steps:
+    helm-test: true
+    trivy-scan: true
+    opengrep-scan: true
+    helm-package-upload: true
+    argo-deploy: true

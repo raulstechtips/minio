@@ -1,0 +1,108 @@
+suite: Tenant (upstream template with calculated fields)
+templates:
+  - templates/tenant.yaml
+release:
+  name: minio-test
+  namespace: test
+tests:
+  - it: calculates the names from tenant.name with the default values
+    asserts:
+      - isKind: { of: Tenant }
+      - equal: { path: metadata.name, value: minio }
+      - equal: { path: metadata.labels, value: { app: minio } }
+      - equal: { path: spec.image, value: "ghcr.io/raulstechtips/minio:RELEASE.2025-04-08T15-41-24Z" }
+      - equal: { path: spec.configuration.name, value: minio-minio-env-configuration }
+      - equal: { path: spec.externalCertSecret, value: [{ name: minio-minio-tls, type: kubernetes.io/tls }] }
+      - equal: { path: spec.requestAutoCert, value: false }
+      - equal: { path: spec.features, value: { bucketDNS: false, enableSFTP: true } }
+      - equal: { path: spec.poolsMetadata, value: { annotations: {}, labels: {} } }
+      - isNull: { path: spec.buckets }
+      - isNull: { path: spec.users }
+
+  - it: keeps the upstream default pool and fills it from poolDefaults
+    asserts:
+      - equal: { path: 'spec.pools[0].name', value: pool-0 }
+      - equal: { path: 'spec.pools[0].servers', value: 4 }
+      - equal: { path: 'spec.pools[0].volumesPerServer', value: 4 }
+      - equal: { path: 'spec.pools[0].volumeClaimTemplate.spec.resources.requests.storage', value: 10Gi }
+      - equal:
+          path: spec.pools[0].resources
+          value:
+            requests: { cpu: 300m, memory: 512Mi, ephemeral-storage: 500Mi }
+            limits: { cpu: 1000m, memory: 2Gi, ephemeral-storage: 500Mi }
+      - equal:
+          path: spec.pools[0].securityContext
+          value: { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, fsGroupChangePolicy: OnRootMismatch, runAsNonRoot: true }
+      - equal:
+          path: spec.pools[0].containerSecurityContext
+          value:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+            seccompProfile: { type: RuntimeDefault }
+
+  - it: calculates a required anti-affinity for the tenant pods
+    values:
+      - ../ci/all-on-values.yaml
+    asserts:
+      - equal:
+          path: spec.pools[0].affinity
+          value:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/instance
+                        operator: In
+                        values: [s3-test]
+                  topologyKey: kubernetes.io/hostname
+      - equal: { path: 'spec.pools[0].volumeClaimTemplate.spec.storageClassName', value: fake-storage-class }
+      - equal: { path: 'spec.pools[0].resources.limits.memory', value: 2Gi }
+
+  - it: lets a pool entry win over the calculated affinity and poolDefaults
+    values:
+      - ../ci/all-on-values.yaml
+    asserts:
+      - equal: { path: 'spec.pools[1].resources', value: { requests: { cpu: 100m, memory: 128Mi } } }
+      - isNotNull: { path: 'spec.pools[1].affinity.nodeAffinity' }
+      - isNull: { path: 'spec.pools[1].affinity.podAntiAffinity' }
+      - equal: { path: 'spec.pools[1].securityContext.runAsUser', value: 1000 }
+
+  - it: uses the first api host and the console host as the Tenant domains
+    values:
+      - ../ci/all-on-values.yaml
+    asserts:
+      - equal: { path: metadata.name, value: s3-test }
+      - equal: { path: spec.configuration.name, value: s3-test-minio-env-configuration }
+      - equal:
+          path: spec.features.domains
+          value:
+            console: https://console.example.test
+            minio: [https://api-one.example.test]
+      - equal:
+          path: spec.externalCertSecret
+          value:
+            - { name: s3-test-minio-tls, type: kubernetes.io/tls }
+            - { name: fake-public-tls, type: kubernetes.io/tls }
+
+  - it: lets the upstream values win over the calculated ones
+    values:
+      - ../ci/all-on-values.yaml
+    set:
+      tenant.configSecret.name: own-config
+      tenant.features.domains: { minio: [https://own.example.test] }
+      tenant.certificate.externalCertSecret: [{ name: own-tls, type: kubernetes.io/tls }]
+    asserts:
+      - equal: { path: spec.configuration.name, value: own-config }
+      - equal: { path: spec.features.domains, value: { minio: [https://own.example.test] } }
+      - equal: { path: spec.externalCertSecret, value: [{ name: own-tls, type: kubernetes.io/tls }] }
+
+  - it: leaves out the chart certificate when TLS is off
+    values:
+      - ../ci/all-on-values.yaml
+    set:
+      tls.enabled: false
+    asserts:
+      - equal: { path: spec.externalCertSecret, value: [{ name: fake-public-tls, type: kubernetes.io/tls }] }

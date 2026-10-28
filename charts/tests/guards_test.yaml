@@ -1,0 +1,57 @@
+suite: Render guards
+templates:
+  - templates/env-configuration-secret.yaml
+  - templates/ingressroutes.yaml
+release:
+  name: minio-test
+  namespace: test
+values:
+  - ../ci/all-on-values.yaml
+tests:
+  - it: fails when the config Secret is not an existing (Infisical) Secret
+    template: templates/env-configuration-secret.yaml
+    set:
+      tenant.configSecret.existingSecret: false
+    asserts:
+      - failedTemplate:
+          errorMessage: tenant.configSecret.existingSecret must be true, because the config Secret comes from Infisical and never from chart values
+
+  - it: fails when OIDC is on without a discovery URL
+    template: templates/env-configuration-secret.yaml
+    set:
+      oidc.configUrl: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: oidc.configUrl is required when oidc.enabled is true
+
+  - it: fails when the routes are on without an api host
+    template: templates/ingressroutes.yaml
+    set:
+      ingressRoute.api.hosts: []
+    asserts:
+      - failedTemplate:
+          errorMessage: ingressRoute.api.hosts needs at least one entry when ingressRoute.enabled is true
+
+  - it: fails when an api host has no name
+    template: templates/ingressroutes.yaml
+    set:
+      ingressRoute.api.hosts: [{ host: api.example.test }]
+    asserts:
+      - failedTemplate:
+          errorMessage: every ingressRoute.api.hosts entry needs a name
+
+  - it: fails when two api hosts have the same name
+    template: templates/ingressroutes.yaml
+    set:
+      ingressRoute.api.hosts: [{ name: one, host: a.example.test }, { name: one, host: b.example.test }]
+    asserts:
+      - failedTemplate:
+          errorMessage: the name one is used more than once in ingressRoute.api.hosts
+
+  - it: fails when a host has no TLS Secret
+    template: templates/ingressroutes.yaml
+    set:
+      ingressRoute.tlsSecretName: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: tlsSecretName is required for IngressRoute minio-ingress-console (set ingressRoute.tlsSecretName or the tlsSecretName of the host)

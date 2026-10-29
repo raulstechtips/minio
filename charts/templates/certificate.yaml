@@ -1,0 +1,34 @@
+{{- /* raulstechtips: MinIO server certificate from cert-manager. */ -}}
+{{- if .Values.tls.enabled }}
+{{- $tenant := include "minio.tenantName" . }}
+{{- $ns := .Release.Namespace }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ printf "%s-minio-certificate" $tenant }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "minio.tlsSecretName" . }}
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  {{- with .Values.tls.organization }}
+  subject:
+    organizations:
+      - {{ . }}
+  {{- end }}
+  # The S3 Service (minio), the pod hostnames (<tenant>-hl), every Service in the namespace,
+  # and one more name that the first tenant (tenant-s3) had from the start. The last name matches
+  # no Service; it stays so that the certificate does not change (no reissue).
+  dnsNames:
+    - {{ printf "minio.%s" $ns }}
+    - {{ printf "minio.%s.svc" $ns }}
+    - {{ printf "minio.%s.svc.cluster.local" $ns }}
+    - {{ printf "*.%s-hl.%s.svc.cluster.local" $tenant $ns | quote }}
+    - {{ printf "*.%s.svc.cluster.local" $ns | quote }}
+    - {{ printf "*.%s.minio.%s.svc.cluster.local" $tenant $ns | quote }}
+  issuerRef:
+    name: {{ required "tls.issuerRef.name is required when tls.enabled is true" .Values.tls.issuerRef.name }}
+    kind: {{ required "tls.issuerRef.kind is required when tls.enabled is true" .Values.tls.issuerRef.kind }}
+{{- end }}

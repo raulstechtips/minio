@@ -1,0 +1,20 @@
+suite: Copied upstream templates that this chart does not use
+templates:
+  - templates/api-ingress.yaml
+  - templates/console-ingress.yaml
+  - templates/tenant-configuration.yaml
+  - templates/kes-configuration-secret.yaml
+  - templates/extra-resources.yaml
+release:
+  name: minio-test
+  namespace: test
+tests:
+  - it: renders no upstream Ingress, config Secret, KES Secret or extra resource with the defaults
+    asserts:
+      - hasDocuments: { count: 0 }
+
+  - it: renders nothing from them with every chart feature on
+    values:
+      - ../ci/all-on-values.yaml
+    asserts:
+      - hasDocuments: { count: 0 }

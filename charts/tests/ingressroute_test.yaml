@@ -1,0 +1,67 @@
+suite: Traefik IngressRoutes (one per host)
+templates:
+  - templates/ingressroutes.yaml
+release:
+  name: minio-test
+  namespace: test
+tests:
+  - it: renders nothing by default
+    asserts:
+      - hasDocuments: { count: 0 }
+
+  - it: renders one object for the console and one for each api host
+    values:
+      - ../ci/all-on-values.yaml
+    asserts:
+      - hasDocuments: { count: 3 }
+
+  - it: routes the console host to the tenant console Service with the defaults
+    values:
+      - ../ci/all-on-values.yaml
+    documentIndex: 0
+    asserts:
+      - isKind: { of: IngressRoute }
+      - equal: { path: metadata.name, value: minio-ingress-console }
+      - equal: { path: metadata.namespace, value: test }
+      - equal: { path: 'metadata.annotations["kubernetes.io/ingress.class"]', value: traefik-external }
+      - equal: { path: spec.entryPoints, value: [websecure] }
+      - equal:
+          path: spec.routes
+          value:
+            - match: Host(`console.example.test`)
+              kind: Rule
+              middlewares: [{ name: fake-headers, namespace: fake-middleware-namespace }]
+              services: [{ name: s3-test-console, port: 9443 }]
+      - equal: { path: spec.tls, value: { secretName: fake-tls } }
+
+  - it: routes an api host to the S3 Service with the defaults
+    values:
+      - ../ci/all-on-values.yaml
+    documentIndex: 1
+    asserts:
+      - equal: { path: metadata.name, value: minio-ingress-api-one }
+      - equal: { path: 'spec.routes[0].match', value: Host(`api-one.example.test`) }
+      - equal: { path: 'spec.routes[0].services', value: [{ name: minio, port: 443 }] }
+      - equal: { path: 'spec.routes[0].middlewares', value: [{ name: fake-headers, namespace: fake-middleware-namespace }] }
+      - equal: { path: spec.tls.secretName, value: fake-tls }
+
+  - it: applies every override of an api host
+    values:
+      - ../ci/all-on-values.yaml
+    documentIndex: 2
+    asserts:
+      - equal: { path: metadata.name, value: minio-ingress-api-two }
+      - equal: { path: 'metadata.annotations["kubernetes.io/ingress.class"]', value: fake-class }
+      - equal: { path: spec.entryPoints, value: [fake-entrypoint] }
+      - isNull: { path: 'spec.routes[0].middlewares' }
+      - equal: { path: spec.tls.secretName, value: fake-two-tls }
+
+  - it: renders no console object when the console host is empty
+    values:
+      - ../ci/all-on-values.yaml
+    set:
+      ingressRoute.console.host: ""
+    documentIndex: 0
+    asserts:
+      - hasDocuments: { count: 2 }
+      - equal: { path: metadata.name, value: minio-ingress-api-one }

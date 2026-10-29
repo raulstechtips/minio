@@ -1,0 +1,29 @@
+{{- /*
+raulstechtips: one Traefik IngressRoute per host. The console host goes to <tenant>-console:9443,
+each api host to the S3 Service minio:443. Names: minio-ingress-console, minio-ingress-api-<name>.
+*/ -}}
+{{- if .Values.ingressRoute.enabled }}
+{{- $tenant := include "minio.tenantName" . }}
+{{- $hosts := .Values.ingressRoute.api.hosts | default list }}
+{{- if not $hosts }}
+{{- fail "ingressRoute.api.hosts needs at least one entry when ingressRoute.enabled is true" }}
+{{- end }}
+{{- $seen := dict }}
+{{- range $hosts }}
+{{- $n := required "every ingressRoute.api.hosts entry needs a name" .name }}
+{{- if hasKey $seen $n }}
+{{- fail (printf "the name %s is used more than once in ingressRoute.api.hosts" $n) }}
+{{- end }}
+{{- $_ := set $seen $n true }}
+{{- end }}
+{{- with .Values.ingressRoute.console }}
+{{- if .host }}
+---
+{{ include "minio.ingressRoute" (dict "root" $ "name" "minio-ingress-console" "host" . "service" (printf "%s-console" $tenant) "port" 9443) }}
+{{- end }}
+{{- end }}
+{{- range $hosts }}
+---
+{{ include "minio.ingressRoute" (dict "root" $ "name" (printf "minio-ingress-api-%s" .name) "host" . "service" "minio" "port" 443) }}
+{{- end }}
+{{- end }}
